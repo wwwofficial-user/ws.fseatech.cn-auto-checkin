@@ -1,0 +1,28 @@
+name: FSeaTech 自动签到＋邮件通知
+
+on:
+  schedule:
+    - cron: '25 0 * * *'    # 每天零点（UTC），根据需求可调整
+  workflow_dispatch:        # 可手动触发
+
+jobs:
+  checkin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 安装Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 安装requests
+        run: pip install requests
+
+      - name: 执行签到并发邮件
+        env:
+          WS_COOKIE: ${{ secrets.WS_COOKIE }}
+          MAIL_USER: ${{ secrets.MAIL_USER }}
+          MAIL_PASS: ${{ secrets.MAIL_PASS }}
+          TO_MAIL: ${{ secrets.TO_MAIL }}
+        run: python checkin.py
