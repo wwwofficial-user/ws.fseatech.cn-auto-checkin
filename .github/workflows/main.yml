@@ -2,22 +2,19 @@ name: FSeaTech 自动签到＋邮件通知
 
 on:
   schedule:
-    - cron: '0 0 * * *'    # 每天零点（UTC），根据需求可调整
-  workflow_dispatch:        # 可手动触发
+    - cron: '0 0 * * *'    # 零点
+  workflow_dispatch:        
 
-# 示例修改
 jobs:
   checkin:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      # 更新Node.js版本
-      - name: Setup Node.js
+      - name: 更新 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'  # 从20改为24
-
+          node-version: '24'  # 👿20-24
       
       - name: 安装Python
         uses: actions/setup-python@v4
