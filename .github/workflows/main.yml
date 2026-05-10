@@ -5,12 +5,20 @@ on:
     - cron: '35 0 * * *'    # 每天零点（UTC），根据需求可调整
   workflow_dispatch:        # 可手动触发
 
+# 示例修改
 jobs:
   checkin:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
+      # 更新Node.js版本
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'  # 从20改为22
 
+      
       - name: 安装Python
         uses: actions/setup-python@v4
         with:
