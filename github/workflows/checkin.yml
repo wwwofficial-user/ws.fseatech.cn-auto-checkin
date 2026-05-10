@@ -2,7 +2,7 @@ name: FSeaTech 自动签到＋邮件通知
 
 on:
   schedule:
-    - cron: '0 0 * * *'    # 每天零点（UTC），根据需求可调整
+    - cron: '10 0 * * *'    # 每天零点（UTC），根据需求可调整
   workflow_dispatch:        # 可手动触发
 
 jobs:
