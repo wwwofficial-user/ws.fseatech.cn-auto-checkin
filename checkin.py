@@ -10,7 +10,7 @@ MAIL_USER = os.getenv('MAIL_USER')
 MAIL_PASS = os.getenv('MAIL_PASS')
 TO_MAIL = os.getenv('TO_MAIL')
 
-# Step 1. 请求签到
+# 签到😈
 sign_url = "http://ws.fseatech.cn/api/points/"
 headers = {
     'Cookie': COOKIE,
@@ -25,7 +25,7 @@ except Exception as e:
     sign_result = f"签到出错:{str(e)}"
     success = False
 
-# Step 2. 拼接标题内容
+# 拼接标题内容
 subject = 'FSeaTech签到成功' if success else 'FSeaTech签到失败'
 content = f"""签到接口URL: {sign_url}
 请求头: {headers}
@@ -33,7 +33,7 @@ content = f"""签到接口URL: {sign_url}
 {sign_result}
 """
 
-# Step 3. 邮件发送逻辑，Outlook smtp配置
+# 邮件发送逻辑，Outlook smtp配置
 def send_email(subject, content):
     msg = MIMEText(content, 'plain', 'utf-8')
     msg['From'] = Header(MAIL_USER)
