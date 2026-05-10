@@ -6,9 +6,9 @@ from email.header import Header
 
 # 获取GitHub secrets注入的环境变量
 COOKIE = os.getenv('WS_COOKIE')
-MAIL_USER = os.getenv('MAIL_USER')       # 发件邮箱
-MAIL_PASS = os.getenv('MAIL_PASS')       # 发件授权码
-TO_MAIL = os.getenv('TO_MAIL')           # 收件邮箱
+MAIL_USER = os.getenv('MAIL_USER')
+MAIL_PASS = os.getenv('MAIL_PASS')
+TO_MAIL = os.getenv('TO_MAIL')
 
 # Step 1. 请求签到
 sign_url = "http://ws.fseatech.cn/api/points/"
@@ -22,7 +22,7 @@ try:
     sign_result = response.text
     success = response.status_code == 200 and ('success' in sign_result or '成功' in sign_result)
 except Exception as e:
-    sign_result = f"签到出错: {str(e)}"
+    sign_result = f"签到出错:{str(e)}"
     success = False
 
 # Step 2. 拼接标题内容
@@ -34,7 +34,7 @@ content = f"""签到接口URL: {sign_url}
 """
 
 # Step 3. 邮件发送逻辑，Outlook smtp配置
-def, content):
+def send_email(subject, content):
     msg = MIMEText(content, 'plain', 'utf-8')
     msg['From'] = Header(MAIL_USER)
     msg['To'] = Header(TO_MAIL)
@@ -49,6 +49,8 @@ def, content):
         smtp.quit()
         print('邮件发送成功')
     except Exception as e:
-        print('邮件发送失败: ', e)
+        print('邮件发送失败:', e)
 
+# 调用发送邮件函数
 send_email(subject, content)
+
