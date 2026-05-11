@@ -28,7 +28,7 @@ import sys
 BASE_URL = "https://ws.fseatech.cn"
 LOGIN_URL = f"{BASE_URL}/api/user/login"
 CHECKIN_URL = f"{BASE_URL}/api/points/checkin"
-INDEX_URL = BASE_URL  # 用于获取csrf_token
+INDEX_URL = BASE_URL  # 🤔用于获取csrf_token
 
 # 请求头
 HEADERS = {
@@ -356,7 +356,7 @@ class CheckinBot:
             
         except Exception as e:
             print(f"发送邮件失败: {e}")
-            return False
+            return False #👿👿👿认证失败
 
 def main():
     """主函数"""
