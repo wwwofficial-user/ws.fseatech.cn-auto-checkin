@@ -3,8 +3,8 @@ name: Auto Checkin
 
 on:
   schedule:
-    # 每天 UTC 时间 0:0 运行（北京时间 8:10）
-    - cron: '0 0 * * *'
+    # 每天 UTC 时间 16:05 运行（北京时间 0:05）
+    - cron: '5 16 * * *'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
