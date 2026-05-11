@@ -38,6 +38,6 @@ about：https://ws.fseatech.cn/
 
 ### 4. 手动测试
 
-all bug，cannot run👿👿👿
+Some issues cannot be run.
 
-I am tied up👿👿👿
+That's all.
