@@ -270,20 +270,30 @@ class CheckinBot:
             if code == 0:
                 # 签到成功
                 subject = "自动签到成功"
+                coupon_reward = data.get('couponReward', False)
+                coupon_count = 1 if coupon_reward
+            else 0    
                 content = f"""✅ 签到成功！
 时间: {current_time}
 状态: {message}
+本次积分: {data.get('pointsEarned', 'N/A')}
 总积分: {data.get('totalPoints', 'N/A')}
 连续天数: {data.get('consecutiveDays', 'N/A')}
+签名卷: 获得{coupon_count}张
 """
             elif code == -1 and "今日已签到" in message:
                 # 已签到
                 subject = "自动签到提醒 - 今日已签到"
+                coupon_reward = data.get('couponReward', False)
+                coupon_count = 1 if coupon_reward
+            else 0    
                 content = f"""ℹ️ 今日已签到
 时间: {current_time}
 状态: {message}
+本次积分: {data.get('pointsEarned', 'N/A')}
 总积分: {data.get('totalPoints', 'N/A')}
 连续天数: {data.get('consecutiveDays', 'N/A')}
+签名卷: 获得{coupon_count}张
 """
             else:
                 # 其他情况
