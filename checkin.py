@@ -271,8 +271,7 @@ class CheckinBot:
                 # 签到成功
                 subject = "自动签到成功"
                 coupon_reward = data.get('couponReward', False)
-                coupon_count = 1 if coupon_reward
-            else 0    
+                coupon_count = 1 if coupon_reward else 0    
                 content = f"""✅ 签到成功！
 时间: {current_time}
 状态: {message}
@@ -285,8 +284,7 @@ class CheckinBot:
                 # 已签到
                 subject = "自动签到提醒 - 今日已签到"
                 coupon_reward = data.get('couponReward', False)
-                coupon_count = 1 if coupon_reward
-            else 0    
+                coupon_count = 1 if coupon_reward else 0    
                 content = f"""ℹ️ 今日已签到
 时间: {current_time}
 状态: {message}
