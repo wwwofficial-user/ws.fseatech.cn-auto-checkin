@@ -1,7 +1,7 @@
 # ws.fseatech.cn-auto-checkin
 A GitHub action for automated check-ins
 about：https://ws.fseatech.cn/
-# 网站自动签到脚本 - v1.1
+# 网站自动签到脚本 - v1.2
 
 ## 主要改进
 1. **自动处理CSRF token**：无需手动设置CSRF_TOKEN
@@ -35,8 +35,6 @@ about：https://ws.fseatech.cn/
 1. 尝试从网站获取CSRF token
 2. 如果获取失败，会生成一个合法的token
 3. 使用这个token进行登录和签到
-
-### 4. 手动测试
 
 Some issues cannot be run.
 
