@@ -1,10 +1,9 @@
-
-name: Auto Checkin
+name: Auto Checkin with Retry Logic
 
 on:
   schedule:
-    # 每天 UTC 时间 16:05 运行（北京时间 0:05）
-    - cron: '5 16 * * *'
+    # 每天 UTC 时间 0:10 运行（北京时间 8:10）
+    - cron: '10 0 * * *'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
@@ -13,25 +12,104 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.9'
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
         pip install requests
-        
+    
     - name: Run checkin script
+      id: checkin
       env:
-        # 从 GitHub Secrets 读取敏感信息
+        # 网站登录信息
         EMAIL: ${{ secrets.EMAIL }}
         PASSWORD: ${{ secrets.PASSWORD }}
+        
         # 邮件配置
         MAIL_FROM: ${{ secrets.MAIL_FROM }}
-        MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
         MAIL_TO: ${{ secrets.MAIL_TO }}
-      run: python checkin.py
+        
+        # Azure OAuth2配置
+        AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        
+        # 重试配置
+        MAX_RETRY_ATTEMPTS: 3
+        RETRY_DELAY_HOURS: 4
+        CURRENT_RUN_DATE: ${{ github.run_attempt > 1 && github.run_number != 0 && format(fromJSON('{"date": ""}').date, 'yyyy-MM-dd') }}
+      run: |
+        # 创建检查点文件
+        mkdir -p checkpoint
+        CHECKPOINT_FILE="checkpoint/checkin_status.json"
+        
+        # 如果是第一次运行（尝试次数=1），重置检查点
+        if [ "${{ github.run_attempt }}" = "1" ]; then
+          echo "首次运行，初始化检查点..."
+          echo '{"last_success_date": "", "retry_count": 0}' > $CHECKPOINT_FILE
+        fi
+        
+        # 运行签到脚本
+        python checkin.py
+        
+        # 检查退出状态
+        if [ $? -eq 0 ]; then
+          echo "签到成功"
+          echo '{"last_success_date": "'$(date -u +"%Y-%m-%d")'", "retry_count": 0}' > $CHECKPOINT_FILE
+          echo "result=success" >> $GITHUB_OUTPUT
+        else
+          echo "签到失败，检查是否需要重试"
+          
+          # 读取重试次数
+          if [ -f "$CHECKPOINT_FILE" ]; then
+            RETRY_COUNT=$(jq -r '.retry_count' $CHECKPOINT_FILE 2>/dev/null || echo "0")
+          else
+            RETRY_COUNT=0
+          fi
+          
+          # 检查重试次数
+          if [ "$RETRY_COUNT" -lt 3 ]; then
+            echo "将在4小时后重试（第$((RETRY_COUNT + 1))次重试）"
+            
+            # 更新重试次数
+            NEW_RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "{\"last_success_date\": \"\", \"retry_count\": $NEW_RETRY_COUNT}" > $CHECKPOINT_FILE
+            
+            # 计算下一次运行时间
+            NEXT_RUN=$(date -d "+4 hours" -u +"%Y-%m-%dT%H:%M:%SZ")
+            echo "下一次运行时间: $NEXT_RUN"
+            echo "result=retry" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "已达到最大重试次数(3)，今日不再重试"
+            echo "result=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        fi
+    
+    - name: 失败时发送通知
+      if: steps.checkin.outputs.result == 'failed'
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
+      run: |
+        # 发送失败通知到Discord（可选）
+        if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"content": "❌ 签到失败，今日已达到最大重试次数(3)，明日将自动重试"}' \
+            $DISCORD_WEBHOOK_URL
+        fi
+        echo "签到失败通知已发送"
+    
+    - name: 保存检查点
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: checkin-checkpoint
+        path: checkpoint/
+        retention-days: 2
