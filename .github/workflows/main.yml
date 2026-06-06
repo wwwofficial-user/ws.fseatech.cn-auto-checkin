@@ -1,4 +1,4 @@
-name: Auto Checkin with Retry Logic1
+name: Auto Checkin with Retry Logic
 
 on:
   schedule:
@@ -42,74 +42,82 @@ jobs:
         # 重试配置
         MAX_RETRY_ATTEMPTS: 3
         RETRY_DELAY_HOURS: 4
-        CURRENT_RUN_DATE: ${{ github.run_attempt > 1 && github.run_number != 0 && format(fromJSON('{"date": ""}').date, 'yyyy-MM-dd') }}
       run: |
         # 创建检查点文件
         mkdir -p checkpoint
         CHECKPOINT_FILE="checkpoint/checkin_status.json"
         
-        # 如果是第一次运行（尝试次数=1），重置检查点
-        if [ "${{ github.run_attempt }}" = "1" ]; then
-          echo "首次运行，初始化检查点..."
-          echo '{"last_success_date": "", "retry_count": 0}' > $CHECKPOINT_FILE
+        # 检查是否是第一次运行今天的任务
+        TODAY=$(date -u +"%Y-%m-%d")
+        if [ -f "$CHECKPOINT_FILE" ]; then
+          CHECKPOINT_DATE=$(jq -r '.check_date' "$CHECKPOINT_FILE" 2>/dev/null || echo "")
+          
+          if [ "$CHECKPOINT_DATE" != "$TODAY" ]; then
+            echo "新的一天，重置检查点..."
+            echo '{"check_date": "'$TODAY'", "retry_count": 0, "success": false}' > "$CHECKPOINT_FILE"
+          fi
+        else
+          echo "初始化检查点..."
+          echo '{"check_date": "'$TODAY'", "retry_count": 0, "success": false}' > "$CHECKPOINT_FILE"
         fi
+        
+        # 读取当前重试次数
+        RETRY_COUNT=$(jq -r '.retry_count' "$CHECKPOINT_FILE" 2>/dev/null || echo "0")
+        SUCCESS_STATUS=$(jq -r '.success' "$CHECKPOINT_FILE" 2>/dev/null || echo "false")
+        
+        # 如果今天已经成功，则跳过
+        if [ "$SUCCESS_STATUS" = "true" ]; then
+          echo "今天已成功签到，跳过执行"
+          echo "result=already_success" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        # 检查是否超过最大重试次数
+        if [ "$RETRY_COUNT" -ge 3 ]; then
+          echo "已达到最大重试次数(3)，今日不再重试"
+          echo "result=max_retries" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "当前重试次数: $RETRY_COUNT/3"
         
         # 运行签到脚本
         python checkin.py
+        CHECKIN_EXIT_CODE=$?
         
         # 检查退出状态
-        if [ $? -eq 0 ]; then
+        if [ $CHECKIN_EXIT_CODE -eq 0 ]; then
           echo "签到成功"
-          echo '{"last_success_date": "'$(date -u +"%Y-%m-%d")'", "retry_count": 0}' > $CHECKPOINT_FILE
+          echo '{"check_date": "'$TODAY'", "retry_count": 0, "success": true}' > "$CHECKPOINT_FILE"
           echo "result=success" >> $GITHUB_OUTPUT
         else
-          echo "签到失败，检查是否需要重试"
+          echo "签到失败"
           
-          # 读取重试次数
-          if [ -f "$CHECKPOINT_FILE" ]; then
-            RETRY_COUNT=$(jq -r '.retry_count' $CHECKPOINT_FILE 2>/dev/null || echo "0")
-          else
-            RETRY_COUNT=0
-          fi
+          # 增加重试次数
+          NEW_RETRY_COUNT=$((RETRY_COUNT + 1))
+          echo '{"check_date": "'$TODAY'", "retry_count": '$NEW_RETRY_COUNT', "success": false}' > "$CHECKPOINT_FILE"
           
-          # 检查重试次数
-          if [ "$RETRY_COUNT" -lt 3 ]; then
-            echo "将在4小时后重试（第$((RETRY_COUNT + 1))次重试）"
-            
-            # 更新重试次数
-            NEW_RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "{\"last_success_date\": \"\", \"retry_count\": $NEW_RETRY_COUNT}" > $CHECKPOINT_FILE
-            
-            # 计算下一次运行时间
-            NEXT_RUN=$(date -d "+4 hours" -u +"%Y-%m-%dT%H:%M:%SZ")
-            echo "下一次运行时间: $NEXT_RUN"
+          if [ "$NEW_RETRY_COUNT" -lt 3 ]; then
+            echo "将在4小时后重试（第$NEW_RETRY_COUNT次重试）"
             echo "result=retry" >> $GITHUB_OUTPUT
-            exit 1
           else
             echo "已达到最大重试次数(3)，今日不再重试"
             echo "result=failed" >> $GITHUB_OUTPUT
-            exit 1
           fi
+          
+          exit 1
         fi
     
-    - name: 失败时发送通知
-      if: steps.checkin.outputs.result == 'failed'
-      env:
-        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
-      run: |
-        # 发送失败通知到Discord（可选）
-        if [ -n "$DISCORD_WEBHOOK_URL" ]; then
-          curl -H "Content-Type: application/json" \
-            -X POST \
-            -d '{"content": "❌ 签到失败，今日已达到最大重试次数(3)，明日将自动重试"}' \
-            $DISCORD_WEBHOOK_URL
-        fi
-        echo "签到失败通知已发送"
-    
-    - name: 保存检查点
+    - name: Save checkpoint
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: checkin-checkpoint
+        name: checkin-checkpoint-${{ github.run_id }}
         path: checkpoint/
         retention-days: 2
+    
+    - name: Send failure notification
+      if: steps.checkin.outputs.result == 'failed'
+      run: |
+        echo "签到失败，已达到最大重试次数"
+        # 这里可以添加发送通知的代码
