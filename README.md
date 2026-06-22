@@ -2,6 +2,8 @@
 A GitHub action for automated check-ins
 about：https://ws.fseatech.cn/
 # 网站自动签到脚本 - v1.2
+# 旧版已无法使用 （对应fseatech v2.0）
+# 新版为private，已不再公开
 
 ## 主要改进
 1. **自动处理CSRF token**：无需手动设置CSRF_TOKEN
